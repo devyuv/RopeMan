@@ -13,6 +13,7 @@ Open `index.html` in any modern browser — desktop/PC with keyboard, or mobile 
 - **Attack:** J, or the HIT button
 - **Rope:** K, or the ROPE button — fires an energy rope at the nearest glowing anchor to swing, pull, and traverse
 - **Rope Lash:** L, or the LASH button — once your lash meter is full (built up by landing hits and collecting coins), unleash a devastating area attack
+- **Power Tackle:** I / Shift, or the TACKLE button — always available on a short cooldown (no charge needed); dashes forward at high speed, smashing through enemies in your path
 - **Pause:** P, or the II button
 
 ## Features
@@ -20,7 +21,7 @@ Open `index.html` in any modern browser — desktop/PC with keyboard, or mobile 
 - 20 hand-designed level layouts across 10 distinct environments (city streets, rooftops, industrial district, subway, harbor, sewer, laboratory, prison, carnival, enemy fortress), each with its own palette, hazards, and enemy mix
 - Two multi-phase boss fights (Level 10: The Iron Beast, Level 20: The Overlord)
 - 8 original enemy types with unique sprites, movement, and attack behavior
-- Rope-swing pendulum physics as a core traversal and combat mechanic, plus a chargeable "Rope Lash" special attack
+- Rope-swing pendulum physics as a core traversal and combat mechanic, plus a chargeable "Rope Lash" special attack and an always-available "Power Tackle" dash attack
 - Double jump, animated running/punching, and a faster overall pace
 - Temporary boosters: Size Up (bigger + stronger), Shield (invincibility), Health Magnet (pulls in coins and slowly heals), Speed Boost
 - Collectible coins that persist between sessions and can be spent in the Upgrades menu to permanently boost max health, attack power, move speed, and rope range

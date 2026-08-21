@@ -91,6 +91,9 @@
   .lashFill { height:100%; background: linear-gradient(90deg,#8a4aff,#ff4ad4); transition: width .1s; }
   #lashLabel { font-size:9px; color:#c8a0ff; }
   #lashLabel.ready { color:#ffe64a; text-shadow:0 0 6px #ffe64a; animation: blink 0.5s steps(1) infinite; }
+  #tackleFill { background: linear-gradient(90deg,#ff8a3a,#ffd24a); }
+  #tackleLabel { font-size:9px; color:#7a5a3a; }
+  #tackleLabel.ready { color:#ffb04a; text-shadow:0 0 6px #ffb04a; }
   #bossBarWrap { position:absolute; top:6px; left:50%; transform:translateX(-50%); width:60%; display:none; z-index:21; }
   #bossBarWrap.active { display:block; }
   .bossName { text-align:center; font-size:10px; color:#ff5a5a; margin-bottom:2px; text-shadow:0 0 4px #ff2a2a; }
@@ -123,6 +126,7 @@
   #btnAttack { right:16px; bottom:140px; width:58px; height:58px; }
   #btnRope { right:44px; bottom:56px; width:64px; height:64px; background: rgba(150,20,40,.5); border-color:#ff5a6e; }
   #btnLash { right:150px; bottom:172px; width:52px; height:52px; background: rgba(140,60,255,.45); border-color:#c084ff; font-size:10px; }
+  #btnTackle { right:214px; bottom:130px; width:52px; height:52px; background: rgba(255,140,40,.45); border-color:#ffb04a; font-size:9px; }
 
   #upgradeList { display:flex; flex-direction:column; gap:8px; max-width:420px; width:100%; margin: 8px auto; }
   .upgradeRow { display:flex; align-items:center; justify-content:space-between; background:rgba(20,10,35,.5); border:1px solid #5a3a80; padding:8px 12px; font-size:11px; }
@@ -177,6 +181,8 @@
     <div class="lashWrap">
       <div class="lashBar"><div class="lashFill" id="lashFill" style="width:0%"></div></div>
       <span id="lashLabel" class="pixelUI">LASH</span>
+      <div class="lashBar" id="tackleBar"><div class="lashFill" id="tackleFill" style="width:100%"></div></div>
+      <span id="tackleLabel" class="pixelUI ready">TACKLE</span>
     </div>
   </div>
   <div id="bossBarWrap"><div class="bossName" id="bossName">BOSS</div><div class="bossBar"><div class="bossFill" id="bossFill" style="width:100%"></div></div></div>
@@ -191,6 +197,7 @@
     <div class="tbtn" id="btnAttack">HIT</div>
     <div class="tbtn" id="btnRope">ROPE</div>
     <div class="tbtn" id="btnLash">LASH</div>
+    <div class="tbtn" id="btnTackle">TACKLE</div>
   </div>
 
   <!-- Screens -->
@@ -227,6 +234,7 @@
       <b>ATTACK:</b> J / HIT button — quick melee strike on nearby foes.<br>
       <b>ROPE:</b> K / ROPE button — fires an energy rope at the nearest glowing anchor ahead. While attached, steer left/right to swing, press JUMP to release momentum, or hold ROPE again to reel in and pull toward the anchor.<br>
       <b>ROPE LASH:</b> L / LASH button — once your lash meter (top of screen) is full, unleash a devastating rope strike that hits everything in front of you. Charge it by landing hits and collecting coins.<br>
+      <b>POWER TACKLE:</b> I / Shift / TACKLE button — always available (short cooldown only, no charge needed). Charges forward at high speed, smashing through anything in your path.<br>
       <b>BOOSTERS:</b> Look for glowing pickups: <b>SIZE</b> (bigger + stronger), <b>SHIELD</b> (temporary invincibility), <b>MAGNET</b> (pulls in nearby coins and slowly heals you), <b>SPEED</b> (faster movement) — all temporary.<br>
       <b>COINS:</b> Collect the spinning gold coins in every level and spend them in the Upgrades menu to permanently boost your health, damage, speed, and rope range.<br>
       <b>RESCUE:</b> Some levels have trapped civilians (flashing icons) — walk into them to save them. Rooftop Inferno is timed — hurry!<br>
@@ -303,6 +311,10 @@ const ROPE_RANGE = 190;
 const TOTAL_LEVELS = 20;
 const COIN_VALUE = 1;
 const MAX_LASH_CHARGE = 100;
+const TACKLE_SPEED = 340;
+const TACKLE_DURATION = 0.22;
+const TACKLE_COOLDOWN = 1.4;
+const TACKLE_DMG_MULT = 1.8;
 
 /* ============================= STORAGE ============================= */
 const SAVE_KEY = "ropeman_save_v1";
@@ -404,7 +416,7 @@ const Audio1 = (function(){
 })();
 
 /* ============================= INPUT ============================= */
-const Input = { left:false, right:false, jump:false, jumpPressed:false, attack:false, attackPressed:false, rope:false, ropePressed:false, lash:false, lashPressed:false, pause:false, pausePressed:false };
+const Input = { left:false, right:false, jump:false, jumpPressed:false, attack:false, attackPressed:false, rope:false, ropePressed:false, lash:false, lashPressed:false, tackle:false, tacklePressed:false, pause:false, pausePressed:false };
 function keyToAction(code){
   switch(code){
     case "ArrowLeft": case "KeyA": return "left";
@@ -413,6 +425,7 @@ function keyToAction(code){
     case "KeyJ": return "attack";
     case "KeyK": return "rope";
     case "KeyL": return "lash";
+    case "KeyI": case "ShiftLeft": case "ShiftRight": return "tackle";
     case "KeyP": case "Escape": return "pause";
   }
   return null;
@@ -424,6 +437,7 @@ window.addEventListener("keydown", (e)=>{
     if(a==="attack" && !Input.attack) Input.attackPressed = true;
     if(a==="rope" && !Input.rope) Input.ropePressed = true;
     if(a==="lash" && !Input.lash) Input.lashPressed = true;
+    if(a==="tackle" && !Input.tackle) Input.tacklePressed = true;
     if(a==="pause" && !Input.pause) Input.pausePressed = true;
     Input[a] = true;
   }
@@ -432,7 +446,7 @@ window.addEventListener("keyup", (e)=>{ const a = keyToAction(e.code); if(a){ In
 
 function bindTouch(id, action){
   const el = document.getElementById(id);
-  const on = (e)=>{ e.preventDefault(); if(!Input[action]) Input[action+"Pressed"] = (action==="jump"||action==="attack"||action==="rope"||action==="lash") ? true : Input[action+"Pressed"]; Input[action]=true; el.classList.add("pressed"); };
+  const on = (e)=>{ e.preventDefault(); if(!Input[action]) Input[action+"Pressed"] = (action==="jump"||action==="attack"||action==="rope"||action==="lash"||action==="tackle") ? true : Input[action+"Pressed"]; Input[action]=true; el.classList.add("pressed"); };
   const off = (e)=>{ e.preventDefault(); Input[action]=false; el.classList.remove("pressed"); };
   el.addEventListener("touchstart", on, {passive:false});
   el.addEventListener("touchend", off, {passive:false});
@@ -442,7 +456,7 @@ function bindTouch(id, action){
   el.addEventListener("mouseleave", off);
 }
 bindTouch("btnLeft","left"); bindTouch("btnRight","right"); bindTouch("btnJump","jump");
-bindTouch("btnAttack","attack"); bindTouch("btnRope","rope"); bindTouch("btnLash","lash");
+bindTouch("btnAttack","attack"); bindTouch("btnRope","rope"); bindTouch("btnLash","lash"); bindTouch("btnTackle","tackle");
 document.getElementById("pauseBtn").addEventListener("click", ()=>{ Input.pausePressed = true; });
 
 function isTouchDevice(){ return ('ontouchstart' in window) || navigator.maxTouchPoints>0; }
@@ -615,6 +629,7 @@ function makePlayer(x,y){
     ropeReelCharge:0,
     jumpsLeft: MAX_JUMPS,
     lashCharge:0, lashTimer:0,
+    tackleCooldown:0, tackleTimer:0, tackleHit:null,
     // temporary booster timers
     sizeT:0, shieldT:0, magnetT:0, speedT:0,
   };
@@ -854,6 +869,8 @@ function updatePlayer(dt){
   if(pl.attackCooldown>0) pl.attackCooldown -= dt;
   if(pl.attackTimer>0){ pl.attackTimer -= dt; }
   if(pl.lashTimer>0) pl.lashTimer -= dt;
+  if(pl.tackleCooldown>0) pl.tackleCooldown -= dt;
+  if(pl.tackleTimer>0) pl.tackleTimer -= dt;
 
   // booster timers
   if(pl.sizeT>0){ pl.sizeT -= dt; if(pl.sizeT<=0){ pl.w=pl.baseW; pl.h=pl.baseH; } }
@@ -919,6 +936,20 @@ function updatePlayer(dt){
     }
   }
 
+  // Power Tackle: always-available forward charge attack (short cooldown, no charge needed)
+  if(!pl.rope && Input.tacklePressed && pl.tackleCooldown<=0 && pl.tackleTimer<=0){
+    pl.tackleTimer = TACKLE_DURATION;
+    pl.tackleCooldown = TACKLE_COOLDOWN;
+    pl.tackleHit = new Set();
+    pl.invuln = Math.max(pl.invuln, TACKLE_DURATION); // brief super-armor through the charge
+    Audio1.sfx.punch();
+    shakeScreen(2);
+  }
+  if(pl.tackleTimer>0 && !pl.rope){
+    pl.vx = pl.facing * TACKLE_SPEED;
+    doTackleHit();
+  }
+
   // Rope Lash: devastating charged special attack
   if(Input.lashPressed && pl.lashCharge>=MAX_LASH_CHARGE && pl.lashTimer<=0){
     doLash();
@@ -943,7 +974,7 @@ function updatePlayer(dt){
     damagePlayer(999);
   }
 
-  Input.jumpPressed=false; Input.attackPressed=false; Input.ropePressed=false; Input.lashPressed=false;
+  Input.jumpPressed=false; Input.attackPressed=false; Input.ropePressed=false; Input.lashPressed=false; Input.tacklePressed=false;
 
   // magnet booster: pull nearby coins toward the player and slowly regenerate health
   if(pl.magnetT>0){
@@ -1040,6 +1071,33 @@ function doPlayerAttack(){
   }
 }
 
+function doTackleHit(){
+  const pl = G.player;
+  const range = 34;
+  const hitbox = { x: pl.x + (pl.facing>0 ? 0 : -range), y: pl.y-26, w: range, h: 26 };
+  const dmg = Math.round(playerDmg() * TACKLE_DMG_MULT);
+  for(const e of G.enemyState){
+    if(e.dead || pl.tackleHit.has(e)) continue;
+    const ebox = {x:e.x-e.w/2, y:e.y-e.h, w:e.w, h:e.h};
+    if(aabb(hitbox, ebox)){
+      pl.tackleHit.add(e);
+      e.hp -= dmg; e.hitFlash = 0.2; e.vx += pl.facing*180; e.vy = -80;
+      addFloatText(e.x, e.y-e.h-4, "-"+dmg);
+      if(e.hp<=0){ e.dead=true; e.deadT=0; G.score += 150; addLashCharge(6); Audio1.sfx.enemyDown(); }
+      else Audio1.sfx.hit();
+    }
+  }
+  if(G.boss && !pl.tackleHit.has(G.boss)){
+    const b = G.boss;
+    const bbox = {x:b.x-b.w/2,y:b.y-b.h,w:b.w,h:b.h};
+    if(aabb(hitbox,bbox)){
+      pl.tackleHit.add(b);
+      const bdmg = Math.round(dmg*1.1);
+      b.hp -= bdmg; addFloatText(b.x,b.y-b.h-6,"-"+bdmg); Audio1.sfx.bossHit(); shakeScreen(4); addLashCharge(10);
+    }
+  }
+}
+
 function doLash(){
   const pl = G.player;
   pl.lashCharge = 0;
@@ -1088,7 +1146,7 @@ function onPlayerDeath(){
   } else {
     // respawn in place
     const pl = G.player;
-    pl.hp = pl.maxHp; pl.x = Math.max(30, pl.x-60); pl.y = G.level.groundY-30; pl.rope=null; pl.invuln=1.5; pl.jumpsLeft = MAX_JUMPS; pl.vy=0;
+    pl.hp = pl.maxHp; pl.x = Math.max(30, pl.x-60); pl.y = G.level.groundY-30; pl.rope=null; pl.invuln=1.5; pl.jumpsLeft = MAX_JUMPS; pl.vy=0; pl.tackleTimer=0;
     document.getElementById("livesVal").textContent = G.lives;
   }
 }
@@ -1353,12 +1411,23 @@ function drawHazards(hazards, camX){
 function drawPlayer(pl, camX){
   const x = pl.x-camX, y = pl.y;
   const scaleMult = pl.baseW ? pl.w/pl.baseW : 1;
-  const moving = Math.abs(pl.vx) > 6 && pl.onGround;
+  const tackling = pl.tackleTimer>0;
+  const moving = Math.abs(pl.vx) > 6 && pl.onGround && !tackling;
   const runPhase = pl.animT * (moving ? 11 : 0);
   const legSwing = moving ? Math.sin(runPhase)*5 : 0;
   const bob = pl.onGround ? Math.abs(Math.sin(runPhase))*(moving?1.6:0) : 0;
   const punching = pl.attackTimer>0;
   const punchProgress = punching ? 1-(pl.attackTimer/0.16) : 0;
+  if(tackling){
+    // dash streak trail behind the player
+    ctx.strokeStyle = "rgba(255,178,74,0.6)"; ctx.lineWidth=2;
+    for(let i=1;i<=3;i++){
+      ctx.beginPath();
+      ctx.moveTo(x - pl.facing*i*10, y-20);
+      ctx.lineTo(x - pl.facing*i*10 - pl.facing*8, y-20);
+      ctx.stroke();
+    }
+  }
   const punchExtend = punching ? Math.sin(punchProgress*Math.PI)*10 : 0;
 
   ctx.save();
@@ -1377,7 +1446,8 @@ function drawPlayer(pl, camX){
 
   // torso (slight forward lean while running)
   ctx.save();
-  if(moving) ctx.rotate(0.06*(pl.vx>0?1:-1)*pl.facing);
+  if(tackling) ctx.rotate(0.4);
+  else if(moving) ctx.rotate(0.06*(pl.vx>0?1:-1)*pl.facing);
   ctx.fillStyle = "#1c2440";
   ctx.fillRect(-6,-24,12,14);
   ctx.fillStyle = "#a02030";
@@ -1774,6 +1844,9 @@ function loop(now){
     const lashLabelEl = document.getElementById("lashLabel");
     lashLabelEl.textContent = lashPct>=100 ? "LASH READY!" : "LASH";
     lashLabelEl.classList.toggle("ready", lashPct>=100);
+    const tacklePct = Math.min(100, 100 - (G.player.tackleCooldown/TACKLE_COOLDOWN)*100);
+    document.getElementById("tackleFill").style.width = Math.max(0,tacklePct) + "%";
+    document.getElementById("tackleLabel").classList.toggle("ready", G.player.tackleCooldown<=0);
     checkLevelComplete();
     render(dt);
   }
