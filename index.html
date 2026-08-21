@@ -86,6 +86,11 @@
   .healthBar { width: 110px; height: 10px; background:#2a1a2a; border:1px solid #000; position:relative; }
   .healthFill { height:100%; background: linear-gradient(90deg,#ff4a5e,#ff9a4a); transition: width .15s; }
   .hud-right { text-align:right; background: rgba(0,0,0,.4); padding:4px 8px; border:1px solid #4a2a66; }
+  .lashWrap { display:flex; align-items:center; gap:6px; margin-top:3px; padding:0 4px; }
+  .lashBar { flex:1; max-width:160px; height:7px; background:#241a2a; border:1px solid #000; }
+  .lashFill { height:100%; background: linear-gradient(90deg,#8a4aff,#ff4ad4); transition: width .1s; }
+  #lashLabel { font-size:9px; color:#c8a0ff; }
+  #lashLabel.ready { color:#ffe64a; text-shadow:0 0 6px #ffe64a; animation: blink 0.5s steps(1) infinite; }
   #bossBarWrap { position:absolute; top:6px; left:50%; transform:translateX(-50%); width:60%; display:none; z-index:21; }
   #bossBarWrap.active { display:block; }
   .bossName { text-align:center; font-size:10px; color:#ff5a5a; margin-bottom:2px; text-shadow:0 0 4px #ff2a2a; }
@@ -117,6 +122,15 @@
   #btnJump { right:120px; bottom:100px; width:62px; height:62px; }
   #btnAttack { right:16px; bottom:140px; width:58px; height:58px; }
   #btnRope { right:44px; bottom:56px; width:64px; height:64px; background: rgba(150,20,40,.5); border-color:#ff5a6e; }
+  #btnLash { right:150px; bottom:172px; width:52px; height:52px; background: rgba(140,60,255,.45); border-color:#c084ff; font-size:10px; }
+
+  #upgradeList { display:flex; flex-direction:column; gap:8px; max-width:420px; width:100%; margin: 8px auto; }
+  .upgradeRow { display:flex; align-items:center; justify-content:space-between; background:rgba(20,10,35,.5); border:1px solid #5a3a80; padding:8px 12px; font-size:11px; }
+  .upgradeRow .uName { color:#6adfff; }
+  .upgradeRow .uDesc { color:#a89ac0; font-size:9px; display:block; }
+  .upgradeRow .uLevel { color:#ffd24a; margin: 0 8px; white-space:nowrap; }
+  .upgradeRow button { font-family:inherit; background:#2a1a44; color:#fff; border:2px solid #6a3fa0; padding:5px 10px; cursor:pointer; font-size:10px; white-space:nowrap; }
+  .upgradeRow button:disabled { opacity:.35; cursor:default; }
 
   #levelGrid { display:grid; grid-template-columns: repeat(5, 1fr); gap:8px; max-width:620px; margin: 14px auto; }
   .lvlTile {
@@ -156,9 +170,13 @@
         <div class="healthBar"><div class="healthFill" id="healthFill" style="width:100%"></div></div>
       </div>
       <div class="hud-right pixelUI">
-        SCORE <span id="scoreVal">0</span><br>
-        LV <span id="levelVal">1</span> &nbsp; x<span id="livesVal">3</span>
+        SCORE <span id="scoreVal">0</span> &nbsp; <span style="color:#ffd24a;">◆</span><span id="coinVal">0</span><br>
+        LV <span id="levelVal">1</span> &nbsp; x<span id="livesVal">5</span>
       </div>
+    </div>
+    <div class="lashWrap">
+      <div class="lashBar"><div class="lashFill" id="lashFill" style="width:0%"></div></div>
+      <span id="lashLabel" class="pixelUI">LASH</span>
     </div>
   </div>
   <div id="bossBarWrap"><div class="bossName" id="bossName">BOSS</div><div class="bossBar"><div class="bossFill" id="bossFill" style="width:100%"></div></div></div>
@@ -172,6 +190,7 @@
     <div class="tbtn" id="btnJump">JUMP</div>
     <div class="tbtn" id="btnAttack">HIT</div>
     <div class="tbtn" id="btnRope">ROPE</div>
+    <div class="tbtn" id="btnLash">LASH</div>
   </div>
 
   <!-- Screens -->
@@ -180,6 +199,7 @@
     <div class="subtitle pixelUI">"THE CITY NEEDS A HERO."</div>
     <button class="menu-btn pixelUI" id="btnStart">Start Game</button>
     <button class="menu-btn pixelUI" id="btnLevelSelect">Level Select</button>
+    <button class="menu-btn pixelUI" id="btnUpgrades">Upgrades <span style="color:#ffd24a;">◆<span id="menuCoinVal">0</span></span></button>
     <button class="menu-btn pixelUI" id="btnHowTo">How To Play</button>
     <button class="menu-btn pixelUI" id="btnSettings">Settings</button>
     <button class="menu-btn pixelUI" id="btnCredits">Credits</button>
@@ -192,6 +212,13 @@
     <button class="menu-btn pixelUI red" id="backFromLevels">Back</button>
   </div>
 
+  <div class="screen" id="screen-upgrades">
+    <div class="title-glow" style="font-size:26px;">UPGRADES</div>
+    <div class="subtitle pixelUI" style="color:#ffd24a;">◆ <span id="upgradeCoinVal">0</span> COINS</div>
+    <div id="upgradeList"></div>
+    <button class="menu-btn pixelUI red" id="backFromUpgrades" style="margin-top:10px;">Back</button>
+  </div>
+
   <div class="screen" id="screen-howto">
     <div class="title-glow" style="font-size:26px;">HOW TO PLAY</div>
     <div class="infoBox pixelUI" style="text-transform:none;">
@@ -199,6 +226,9 @@
       <b>JUMP:</b> Space / JUMP button — press again in mid-air for a double jump. Also releases a rope swing.<br>
       <b>ATTACK:</b> J / HIT button — quick melee strike on nearby foes.<br>
       <b>ROPE:</b> K / ROPE button — fires an energy rope at the nearest glowing anchor ahead. While attached, steer left/right to swing, press JUMP to release momentum, or hold ROPE again to reel in and pull toward the anchor.<br>
+      <b>ROPE LASH:</b> L / LASH button — once your lash meter (top of screen) is full, unleash a devastating rope strike that hits everything in front of you. Charge it by landing hits and collecting coins.<br>
+      <b>BOOSTERS:</b> Look for glowing pickups: <b>SIZE</b> (bigger + stronger), <b>SHIELD</b> (temporary invincibility), <b>MAGNET</b> (pulls in nearby coins and slowly heals you), <b>SPEED</b> (faster movement) — all temporary.<br>
+      <b>COINS:</b> Collect the spinning gold coins in every level and spend them in the Upgrades menu to permanently boost your health, damage, speed, and rope range.<br>
       <b>RESCUE:</b> Some levels have trapped civilians (flashing icons) — walk into them to save them. Rooftop Inferno is timed — hurry!<br>
       <b>BOSSES:</b> Appear on Level 10 and Level 20. Watch for the flashing "telegraph" before a big attack, and use your rope to yank open their guard before striking the glowing weak point.<br>
       <b>PAUSE:</b> P or the II button, top right.
@@ -266,20 +296,52 @@
 /* ============================= CONSTANTS ============================= */
 const W = 480, H = 270;
 const GRAVITY = 620;
-const MOVE_SPEED = 92;
+const MOVE_SPEED = 130;
 const JUMP_VEL = -260;
 const MAX_JUMPS = 2;
-const ROPE_RANGE = 180;
+const ROPE_RANGE = 190;
 const TOTAL_LEVELS = 20;
+const COIN_VALUE = 1;
+const MAX_LASH_CHARGE = 100;
 
 /* ============================= STORAGE ============================= */
 const SAVE_KEY = "ropeman_save_v1";
+function defaultSave(){
+  return {
+    unlocked:1, highScore:0, coins:0,
+    upgrades:{hp:0, dmg:0, speed:0, rope:0},
+    settings:{music:true,sfx:true,crt:true,shake:true,touch:"auto"}
+  };
+}
 function loadSave(){
-  try { return JSON.parse(localStorage.getItem(SAVE_KEY)) || {unlocked:1, highScore:0, settings:{music:true,sfx:true,crt:true,shake:true,touch:"auto"}}; }
-  catch(e){ return {unlocked:1, highScore:0, settings:{music:true,sfx:true,crt:true,shake:true,touch:"auto"}}; }
+  try {
+    const s = JSON.parse(localStorage.getItem(SAVE_KEY));
+    if(!s) return defaultSave();
+    const d = defaultSave();
+    // backfill any missing fields for saves from older versions
+    if(typeof s.coins !== "number") s.coins = 0;
+    if(!s.upgrades) s.upgrades = d.upgrades;
+    for(const k in d.upgrades) if(typeof s.upgrades[k] !== "number") s.upgrades[k] = 0;
+    if(!s.settings) s.settings = d.settings;
+    for(const k in d.settings) if(s.settings[k]===undefined) s.settings[k] = d.settings[k];
+    return s;
+  }
+  catch(e){ return defaultSave(); }
 }
 function writeSave(){ localStorage.setItem(SAVE_KEY, JSON.stringify(save)); }
 let save = loadSave();
+
+const UPGRADE_DEFS = {
+  hp:    { label:"MAX HEALTH", max:5, baseCost:15, perLevel:"+15 HP",   desc:"Increases maximum health." },
+  dmg:   { label:"ATTACK POWER", max:5, baseCost:15, perLevel:"+3 DMG", desc:"Increases melee damage." },
+  speed: { label:"MOVE SPEED", max:5, baseCost:15, perLevel:"+8% SPD", desc:"Increases run speed." },
+  rope:  { label:"ROPE RANGE", max:5, baseCost:12, perLevel:"+18 RNG", desc:"Increases rope targeting range." },
+};
+function upgradeCost(key, level){ return Math.round(UPGRADE_DEFS[key].baseCost * (1 + level*0.8)); }
+function playerMaxHp(){ return 100 + save.upgrades.hp*15; }
+function playerDmg(){ return 12 + save.upgrades.dmg*3; }
+function playerSpeedMult(){ return 1 + save.upgrades.speed*0.08; }
+function playerRopeRange(){ return ROPE_RANGE + save.upgrades.rope*18; }
 
 /* ============================= AUDIO ============================= */
 const Audio1 = (function(){
@@ -342,7 +404,7 @@ const Audio1 = (function(){
 })();
 
 /* ============================= INPUT ============================= */
-const Input = { left:false, right:false, jump:false, jumpPressed:false, attack:false, attackPressed:false, rope:false, ropePressed:false, pause:false, pausePressed:false };
+const Input = { left:false, right:false, jump:false, jumpPressed:false, attack:false, attackPressed:false, rope:false, ropePressed:false, lash:false, lashPressed:false, pause:false, pausePressed:false };
 function keyToAction(code){
   switch(code){
     case "ArrowLeft": case "KeyA": return "left";
@@ -350,6 +412,7 @@ function keyToAction(code){
     case "Space": case "ArrowUp": case "KeyW": return "jump";
     case "KeyJ": return "attack";
     case "KeyK": return "rope";
+    case "KeyL": return "lash";
     case "KeyP": case "Escape": return "pause";
   }
   return null;
@@ -360,6 +423,7 @@ window.addEventListener("keydown", (e)=>{
     if(a==="jump" && !Input.jump) Input.jumpPressed = true;
     if(a==="attack" && !Input.attack) Input.attackPressed = true;
     if(a==="rope" && !Input.rope) Input.ropePressed = true;
+    if(a==="lash" && !Input.lash) Input.lashPressed = true;
     if(a==="pause" && !Input.pause) Input.pausePressed = true;
     Input[a] = true;
   }
@@ -368,7 +432,7 @@ window.addEventListener("keyup", (e)=>{ const a = keyToAction(e.code); if(a){ In
 
 function bindTouch(id, action){
   const el = document.getElementById(id);
-  const on = (e)=>{ e.preventDefault(); if(!Input[action]) Input[action+"Pressed"] = (action==="jump"||action==="attack"||action==="rope") ? true : Input[action+"Pressed"]; Input[action]=true; el.classList.add("pressed"); };
+  const on = (e)=>{ e.preventDefault(); if(!Input[action]) Input[action+"Pressed"] = (action==="jump"||action==="attack"||action==="rope"||action==="lash") ? true : Input[action+"Pressed"]; Input[action]=true; el.classList.add("pressed"); };
   const off = (e)=>{ e.preventDefault(); Input[action]=false; el.classList.remove("pressed"); };
   el.addEventListener("touchstart", on, {passive:false});
   el.addEventListener("touchend", off, {passive:false});
@@ -378,7 +442,7 @@ function bindTouch(id, action){
   el.addEventListener("mouseleave", off);
 }
 bindTouch("btnLeft","left"); bindTouch("btnRight","right"); bindTouch("btnJump","jump");
-bindTouch("btnAttack","attack"); bindTouch("btnRope","rope");
+bindTouch("btnAttack","attack"); bindTouch("btnRope","rope"); bindTouch("btnLash","lash");
 document.getElementById("pauseBtn").addEventListener("click", ()=>{ Input.pausePressed = true; });
 
 function isTouchDevice(){ return ('ontouchstart' in window) || navigator.maxTouchPoints>0; }
@@ -388,6 +452,7 @@ function updateTouchUI(){
   const show = mode==="on" || (mode==="auto" && isTouchDevice());
   tc.classList.toggle("active", show);
 }
+
 
 /* ============================= THEMES ============================= */
 // Each theme: sky gradient colors, platform color, accent, fog, enemy palette
@@ -450,6 +515,7 @@ function generateLevel(def){
   const ropePoints = [];
   const enemies = [];
   const collectibles = [];
+  const boosters = [];
   const civilians = [];
   const hazards = [];
 
@@ -461,12 +527,14 @@ function generateLevel(def){
     ropePoints.push({x:levelW/2, y:40});
     ropePoints.push({x:120, y:40});
     ropePoints.push({x:levelW-160, y:40});
-    return {platforms, ropePoints, enemies, collectibles, civilians, hazards, levelW, groundY, exitX: levelW-40, isBoss:true, bossType:def.boss};
+    boosters.push({x:levelW/2, y:150-20, type:"shield", taken:false});
+    return {platforms, ropePoints, enemies, collectibles, boosters, civilians, hazards, levelW, groundY, exitX: levelW-40, isBoss:true, bossType:def.boss};
   }
 
   // guaranteed early rope anchor so the mechanic is discoverable right away
   ropePoints.push({x:170, y: groundY-140});
 
+  const BOOSTER_TYPES = ["sizeup","shield","magnet","speedboost"];
   // generate platform chain
   let x = 260;
   let n = 0;
@@ -476,7 +544,8 @@ function generateLevel(def){
     const y = groundY - (40 + rnd()*110);
     platforms.push({x:x, y:y, w:w, h:14, type:"plat"});
     if(rnd()<0.55) ropePoints.push({x:x+w/2, y:y-90-rnd()*40});
-    if(rnd()<0.3 && !def.rescue) collectibles.push({x:x+w/2, y:y-20, taken:false, val:100});
+    if(rnd()<0.4 && !def.rescue) collectibles.push({x:x+w/2, y:y-20, taken:false, val:100});
+    if(rnd()<0.1) boosters.push({x:x+w/2, y:y-26, type:BOOSTER_TYPES[Math.floor(rnd()*BOOSTER_TYPES.length)], taken:false});
     if(def.rooftop && rnd()<0.35) hazards.push({x:x+w*0.3, y:y-6, w:14, h:6, type: def.theme==="rooftopStorm"?"spark": (def.theme==="rooftopInferno"?"fire":"gap")});
     x += w + gap;
     n++;
@@ -511,7 +580,7 @@ function generateLevel(def){
       }
     }
   }
-  return {platforms, ropePoints, enemies, collectibles, civilians, hazards, levelW, groundY, exitX: levelW-60, isBoss:false};
+  return {platforms, ropePoints, enemies, collectibles, boosters, civilians, hazards, levelW, groundY, exitX: levelW-60, isBoss:false};
 }
 
 /* ============================= GAME STATE ============================= */
@@ -526,7 +595,7 @@ function newRun(){
   return {
     levelIndex: 1,
     score: 0,
-    lives: 3,
+    lives: 5,
     level: null,
     player: null,
     camX: 0,
@@ -538,24 +607,27 @@ function newRun(){
 /* ============================= ENTITIES ============================= */
 function makePlayer(x,y){
   return {
-    x, y, w:14, h:26, vx:0, vy:0, onGround:false, facing:1,
-    hp:100, maxHp:100, invuln:0,
+    x, y, w:14, h:26, baseW:14, baseH:26, vx:0, vy:0, onGround:false, facing:1,
+    hp:playerMaxHp(), maxHp:playerMaxHp(), invuln:0,
     attackTimer:0, attackCooldown:0,
     rope:null, // {anchorX, anchorY, len, angle}
     animT:0, state:"idle", // idle, run, jump, attack, swing, hurt
     ropeReelCharge:0,
     jumpsLeft: MAX_JUMPS,
+    lashCharge:0, lashTimer:0,
+    // temporary booster timers
+    sizeT:0, shieldT:0, magnetT:0, speedT:0,
   };
 }
 function makeEnemyStats(type){
   const T = {
-    thug:      {hp:24, speed:26, dmg:8,  range:16, kind:"melee", w:13,h:24, name:"Street Thug"},
-    guard:     {hp:44, speed:18, dmg:10, range:16, kind:"melee", w:15,h:26, name:"Armored Guard"},
-    hunter:    {hp:20, speed:34, dmg:6,  range:120,kind:"ranged",w:13,h:24, name:"Rooftop Hunter"},
-    drone:     {hp:14, speed:40, dmg:6,  range:130,kind:"flyranged",w:16,h:12, name:"Drone"},
-    brute:     {hp:60, speed:14, dmg:14, range:18, kind:"melee", w:18,h:28, name:"Heavy Brute"},
+    thug:      {hp:24, speed:38, dmg:8,  range:16, kind:"melee", w:13,h:24, name:"Street Thug"},
+    guard:     {hp:44, speed:26, dmg:10, range:16, kind:"melee", w:15,h:26, name:"Armored Guard"},
+    hunter:    {hp:20, speed:48, dmg:6,  range:120,kind:"ranged",w:13,h:24, name:"Rooftop Hunter"},
+    drone:     {hp:14, speed:56, dmg:6,  range:130,kind:"flyranged",w:16,h:12, name:"Drone"},
+    brute:     {hp:60, speed:20, dmg:14, range:18, kind:"melee", w:18,h:28, name:"Heavy Brute"},
     robot:     {hp:30, speed:0,  dmg:8,  range:130,kind:"stationary",w:15,h:26, name:"Robot Sentry"},
-    mutant:    {hp:26, speed:46, dmg:10, range:16, kind:"chaser", w:15,h:20, name:"Mutant Creature"},
+    mutant:    {hp:26, speed:64, dmg:10, range:16, kind:"chaser", w:15,h:20, name:"Mutant Creature"},
     sniper:    {hp:18, speed:0,  dmg:12, range:200,kind:"stationary",w:13,h:24, name:"Sniper"},
   };
   return T[type]||T.thug;
@@ -597,6 +669,7 @@ function goMenu(){
   document.getElementById("bossBarWrap").classList.remove("active");
   updateTouchUI();
   Audio1.playMusic("menu");
+  document.getElementById("menuCoinVal").textContent = save.coins;
   showScreen("screen-menu");
 }
 document.getElementById("btnStart").addEventListener("click", ()=>{ Audio1.resume(); Audio1.sfx.menu(); startLevel(save.unlocked); });
@@ -606,6 +679,34 @@ document.getElementById("btnHowTo").addEventListener("click", ()=>{ Audio1.resum
 document.getElementById("backFromHowTo").addEventListener("click", ()=>{ Audio1.sfx.menu(); showScreen("screen-menu"); });
 document.getElementById("btnCredits").addEventListener("click", ()=>{ Audio1.sfx.menu(); showScreen("screen-credits"); });
 document.getElementById("backFromCredits").addEventListener("click", ()=>{ Audio1.sfx.menu(); showScreen("screen-menu"); });
+
+document.getElementById("btnUpgrades").addEventListener("click", ()=>{ Audio1.resume(); Audio1.sfx.menu(); buildUpgradeList(); showScreen("screen-upgrades"); });
+document.getElementById("backFromUpgrades").addEventListener("click", ()=>{ Audio1.sfx.menu(); writeSave(); showScreen("screen-menu"); });
+function buildUpgradeList(){
+  document.getElementById("upgradeCoinVal").textContent = save.coins;
+  const list = document.getElementById("upgradeList");
+  list.innerHTML = "";
+  for(const key in UPGRADE_DEFS){
+    const def = UPGRADE_DEFS[key];
+    const level = save.upgrades[key];
+    const maxed = level >= def.max;
+    const cost = maxed ? 0 : upgradeCost(key, level);
+    const row = document.createElement("div");
+    row.className = "upgradeRow pixelUI";
+    row.innerHTML = `<div><span class="uName">${def.label}</span> <span class="uLevel">LV ${level}/${def.max}</span><span class="uDesc">${def.desc} (${def.perLevel})</span></div>
+      <button ${maxed || save.coins<cost ? "disabled":""}>${maxed?"MAXED":"◆"+cost}</button>`;
+    if(!maxed){
+      row.querySelector("button").addEventListener("click", ()=>{
+        if(save.coins>=cost){
+          save.coins -= cost; save.upgrades[key]++;
+          writeSave(); Audio1.sfx.pickup();
+          buildUpgradeList();
+        }
+      });
+    }
+    list.appendChild(row);
+  }
+}
 
 document.getElementById("btnSettings").addEventListener("click", ()=>{ Audio1.resume(); Audio1.sfx.menu(); refreshSettingsUI(); showScreen("screen-settings"); });
 document.getElementById("backFromSettings").addEventListener("click", ()=>{ Audio1.sfx.menu(); writeSave(); showScreen("screen-menu"); });
@@ -638,7 +739,7 @@ document.getElementById("resumeBtn").addEventListener("click", ()=>{ gameState =
 document.getElementById("restartBtn").addEventListener("click", ()=>{ startLevel(G.levelIndex); });
 document.getElementById("quitBtn").addEventListener("click", ()=>{ Audio1.stopMusic(); goMenu(); });
 
-document.getElementById("continueBtn").addEventListener("click", ()=>{ startLevel(G.levelIndex, true); });
+document.getElementById("continueBtn").addEventListener("click", ()=>{ G.lives = 5; startLevel(G.levelIndex, true); });
 document.getElementById("gameoverMenuBtn").addEventListener("click", ()=>{ Audio1.stopMusic(); goMenu(); });
 
 document.getElementById("nextLevelBtn").addEventListener("click", ()=>{
@@ -659,6 +760,7 @@ function musicKindForLevel(def){
 
 /* ============================= LEVEL / RUN CONTROL ============================= */
 function requestLandscape(){
+  if(!isTouchDevice()) return; // desktop/PC: leave windowing alone, keyboard works as-is
   try{
     const el = document.documentElement;
     const req = el.requestFullscreen ? el.requestFullscreen.bind(el)
@@ -687,6 +789,7 @@ function startLevel(idx, keepScore){
   });
   G.civilianState = G.level.civilians.map(c=>Object.assign({},c));
   G.collectibleState = G.level.collectibles.map(c=>Object.assign({},c));
+  G.boosterState = (G.level.boosters||[]).map(b=>Object.assign({},b));
   G.hazards = G.level.hazards;
   G.rescueGoal = def.rescue ? G.level.civilians.length : 0;
   G.rescued = 0;
@@ -701,6 +804,7 @@ function startLevel(idx, keepScore){
   document.getElementById("levelVal").textContent = idx;
   document.getElementById("livesVal").textContent = G.lives;
   document.getElementById("scoreVal").textContent = G.score;
+  document.getElementById("coinVal").textContent = save.coins;
   setHudVisible(true);
   document.getElementById("bossBarWrap").classList.toggle("active", !!def.boss);
   if(def.boss) document.getElementById("bossName").textContent = def.boss==="ironbeast" ? "THE IRON BEAST" : "THE OVERLORD";
@@ -749,6 +853,15 @@ function updatePlayer(dt){
   if(pl.invuln>0) pl.invuln -= dt;
   if(pl.attackCooldown>0) pl.attackCooldown -= dt;
   if(pl.attackTimer>0){ pl.attackTimer -= dt; }
+  if(pl.lashTimer>0) pl.lashTimer -= dt;
+
+  // booster timers
+  if(pl.sizeT>0){ pl.sizeT -= dt; if(pl.sizeT<=0){ pl.w=pl.baseW; pl.h=pl.baseH; } }
+  if(pl.shieldT>0) pl.shieldT -= dt;
+  if(pl.magnetT>0) pl.magnetT -= dt;
+  if(pl.speedT>0) pl.speedT -= dt;
+
+  const speedMult = playerSpeedMult() * (pl.speedT>0 ? 1.6 : 1);
 
   // horizontal input
   let mv = 0;
@@ -784,7 +897,7 @@ function updatePlayer(dt){
       Audio1.sfx.jump();
     }
   } else {
-    pl.vx = mv * MOVE_SPEED;
+    pl.vx = mv * MOVE_SPEED * speedMult;
     if(Input.jumpPressed && pl.jumpsLeft>0){
       pl.vy = pl.onGround ? JUMP_VEL : JUMP_VEL*0.85;
       pl.onGround=false; pl.jumpsLeft--;
@@ -806,8 +919,13 @@ function updatePlayer(dt){
     }
   }
 
+  // Rope Lash: devastating charged special attack
+  if(Input.lashPressed && pl.lashCharge>=MAX_LASH_CHARGE && pl.lashTimer<=0){
+    doLash();
+  }
+
   if(Input.attackPressed && pl.attackCooldown<=0){
-    pl.attackTimer = 0.16; pl.attackCooldown = 0.32;
+    pl.attackTimer = 0.16; pl.attackCooldown = 0.26;
     Audio1.sfx.punch();
     doPlayerAttack();
   }
@@ -825,7 +943,19 @@ function updatePlayer(dt){
     damagePlayer(999);
   }
 
-  Input.jumpPressed=false; Input.attackPressed=false; Input.ropePressed=false;
+  Input.jumpPressed=false; Input.attackPressed=false; Input.ropePressed=false; Input.lashPressed=false;
+
+  // magnet booster: pull nearby coins toward the player and slowly regenerate health
+  if(pl.magnetT>0){
+    pl.hp = Math.min(pl.maxHp, pl.hp + 5*dt);
+    const radius = 100;
+    for(const c of G.collectibleState){
+      if(!c.taken && Math.hypot(c.x-pl.x,c.y-pl.y) < radius){
+        c.x += (pl.x-c.x)*Math.min(1,dt*6);
+        c.y += (pl.y-c.y)*Math.min(1,dt*6);
+      }
+    }
+  }
 
   // civilian rescue
   for(const c of G.civilianState){
@@ -834,10 +964,19 @@ function updatePlayer(dt){
       banner("CIVILIAN RESCUED!", 900);
     }
   }
-  // collectibles
+  // collectibles (coins)
   for(const c of G.collectibleState){
     if(!c.taken && Math.abs(c.x-pl.x)<12 && Math.abs(c.y-pl.y)<16){
-      c.taken = true; G.score += c.val; Audio1.sfx.pickup();
+      c.taken = true; G.score += c.val; save.coins += COIN_VALUE; addLashCharge(3);
+      writeSave();
+      document.getElementById("coinVal").textContent = save.coins;
+      Audio1.sfx.pickup();
+    }
+  }
+  // boosters
+  for(const b of (G.boosterState||[])){
+    if(!b.taken && Math.abs(b.x-pl.x)<14 && Math.abs(b.y-pl.y)<18){
+      b.taken = true; applyBooster(b.type); Audio1.sfx.pickup();
     }
   }
   // hazards
@@ -848,35 +987,44 @@ function updatePlayer(dt){
   }
 }
 
+function addLashCharge(amt){
+  const pl = G.player;
+  pl.lashCharge = Math.min(MAX_LASH_CHARGE, pl.lashCharge+amt);
+}
+
+function applyBooster(type){
+  const pl = G.player;
+  if(type==="sizeup"){ pl.sizeT = 9; pl.w = pl.baseW*1.6; pl.h = pl.baseH*1.6; banner("SIZE BOOST!",1000); }
+  else if(type==="shield"){ pl.shieldT = 8; banner("SHIELD UP!",1000); }
+  else if(type==="magnet"){ pl.magnetT = 9; banner("HEALTH MAGNET!",1000); }
+  else if(type==="speedboost"){ pl.speedT = 7; banner("SPEED BOOST!",1000); }
+}
+
 function findRopeTarget(){
   const pl = G.player;
-  let best = null, bestD = ROPE_RANGE;
+  let best = null, bestD = playerRopeRange();
   for(const rp of G.level.ropePoints){
     const dx = rp.x-pl.x, dy = rp.y-pl.y;
     const d = Math.hypot(dx,dy);
     if(d < bestD && dy < 10){ bestD = d; best = rp; }
-  }
-  if(G.boss){
-    for(const rp of G.level.ropePoints){
-      const dx=rp.x-pl.x, dy=rp.y-pl.y; const d=Math.hypot(dx,dy);
-      if(d<bestD && dy<10){ bestD=d; best=rp; }
-    }
   }
   return best;
 }
 
 function doPlayerAttack(){
   const pl = G.player;
-  const range = 22;
+  const sizeBonus = pl.sizeT>0 ? 1.7 : 1;
+  const dmg = Math.round(playerDmg() * sizeBonus);
+  const range = 22 * (pl.sizeT>0 ? 1.35 : 1);
   const hitbox = { x: pl.x + pl.facing*4, y: pl.y-24, w: range, h: 22 };
   if(pl.facing<0) hitbox.x -= range;
   for(const e of G.enemyState){
     if(e.dead) continue;
     const ebox = {x:e.x-e.w/2, y:e.y-e.h, w:e.w, h:e.h};
     if(aabb(hitbox, ebox)){
-      e.hp -= 12; e.hitFlash = 0.15; e.vx += pl.facing*40;
-      addFloatText(e.x, e.y-e.h-4, "-12");
-      if(e.hp<=0){ e.dead=true; e.deadT=0; G.score += 150; Audio1.sfx.enemyDown(); }
+      e.hp -= dmg; e.hitFlash = 0.15; e.vx += pl.facing*40;
+      addFloatText(e.x, e.y-e.h-4, "-"+dmg);
+      if(e.hp<=0){ e.dead=true; e.deadT=0; G.score += 150; addLashCharge(6); Audio1.sfx.enemyDown(); }
       else Audio1.sfx.hit();
     }
   }
@@ -884,9 +1032,39 @@ function doPlayerAttack(){
     const b = G.boss;
     const bbox = {x:b.x-b.w/2,y:b.y-b.h,w:b.w,h:b.h};
     if(aabb(hitbox,bbox) && b.stunT>0){
-      b.hp -= 18; addFloatText(b.x,b.y-b.h-6,"-18"); Audio1.sfx.bossHit(); shakeScreen(3); b.stunT -= 0.4;
+      const bdmg = Math.round(dmg*1.4);
+      b.hp -= bdmg; addFloatText(b.x,b.y-b.h-6,"-"+bdmg); Audio1.sfx.bossHit(); shakeScreen(3); b.stunT -= 0.4; addLashCharge(10);
     } else if(aabb(hitbox,bbox)){
       addFloatText(b.x,b.y-b.h-6,"BLOCKED"); Audio1.sfx.hit();
+    }
+  }
+}
+
+function doLash(){
+  const pl = G.player;
+  pl.lashCharge = 0;
+  pl.lashTimer = 0.5;
+  Audio1.sfx.explosion();
+  shakeScreen(7);
+  banner("ROPE LASH!", 700);
+  const range = 95;
+  const hitbox = { x: pl.x + (pl.facing>0 ? 0 : -range), y: pl.y-32, w: range, h: 32 };
+  const dmg = 60;
+  for(const e of G.enemyState){
+    if(e.dead) continue;
+    const ebox = {x:e.x-e.w/2, y:e.y-e.h, w:e.w, h:e.h};
+    if(aabb(hitbox, ebox)){
+      e.hp -= dmg; e.hitFlash = 0.2; e.vx += pl.facing*160;
+      addFloatText(e.x, e.y-e.h-4, "-"+dmg);
+      if(e.hp<=0){ e.dead=true; e.deadT=0; G.score += 150; Audio1.sfx.enemyDown(); }
+    }
+  }
+  if(G.boss){
+    const b = G.boss;
+    const bbox = {x:b.x-b.w/2,y:b.y-b.h,w:b.w,h:b.h};
+    if(aabb(hitbox,bbox)){
+      const bdmg = 45;
+      b.hp -= bdmg; addFloatText(b.x,b.y-b.h-6,"-"+bdmg); Audio1.sfx.bossHit(); shakeScreen(6);
     }
   }
 }
@@ -894,6 +1072,7 @@ function doPlayerAttack(){
 function damagePlayer(amt){
   const pl = G.player;
   if(pl.invuln>0) return;
+  if(pl.shieldT>0){ Audio1.sfx.hit(); shakeScreen(2); pl.invuln=0.25; return; }
   pl.hp -= amt; pl.invuln = 0.9; Audio1.sfx.hurt(); shakeScreen(4);
   if(pl.hp<=0){ pl.hp=0; onPlayerDeath(); }
 }
@@ -1173,29 +1352,56 @@ function drawHazards(hazards, camX){
 
 function drawPlayer(pl, camX){
   const x = pl.x-camX, y = pl.y;
-  const bob = pl.onGround ? Math.sin(pl.animT*10)*(Math.abs(pl.vx)>4?1.4:0) : 0;
+  const scaleMult = pl.baseW ? pl.w/pl.baseW : 1;
+  const moving = Math.abs(pl.vx) > 6 && pl.onGround;
+  const runPhase = pl.animT * (moving ? 11 : 0);
+  const legSwing = moving ? Math.sin(runPhase)*5 : 0;
+  const bob = pl.onGround ? Math.abs(Math.sin(runPhase))*(moving?1.6:0) : 0;
+  const punching = pl.attackTimer>0;
+  const punchProgress = punching ? 1-(pl.attackTimer/0.16) : 0;
+  const punchExtend = punching ? Math.sin(punchProgress*Math.PI)*10 : 0;
+
   ctx.save();
   ctx.translate(x, y-bob);
-  ctx.scale(pl.facing, 1);
+  ctx.scale(pl.facing*scaleMult, scaleMult);
   const flash = pl.invuln>0 && Math.floor(pl.animT*20)%2===0;
   ctx.globalAlpha = flash?0.4:1;
-  // legs
+
+  // legs (alternate swing while running)
   ctx.fillStyle = "#141425";
-  ctx.fillRect(-5,-12,4,12); ctx.fillRect(1,-12,4,12);
+  ctx.fillRect(-5, -12-legSwing*0.3, 4, 12);
+  ctx.fillRect(1, -12+legSwing*0.3, 4, 12);
   ctx.fillStyle = "#8a1a2a";
-  ctx.fillRect(-5,-4,4,4); ctx.fillRect(1,-4,4,4); // boots
-  // torso
+  ctx.fillRect(-5, -4-legSwing*0.3, 4, 4);
+  ctx.fillRect(1, -4+legSwing*0.3, 4, 4);
+
+  // torso (slight forward lean while running)
+  ctx.save();
+  if(moving) ctx.rotate(0.06*(pl.vx>0?1:-1)*pl.facing);
   ctx.fillStyle = "#1c2440";
   ctx.fillRect(-6,-24,12,14);
   ctx.fillStyle = "#a02030";
   ctx.beginPath(); ctx.moveTo(-6,-24); ctx.lineTo(2,-24); ctx.lineTo(-6,-10); ctx.closePath(); ctx.fill(); // crimson sash
   ctx.fillStyle = "#7a8aa0"; // emblem diamond
   ctx.beginPath(); ctx.moveTo(0,-19); ctx.lineTo(3,-16); ctx.lineTo(0,-13); ctx.lineTo(-3,-16); ctx.closePath(); ctx.fill();
-  // arms
+  ctx.restore();
+
+  // back arm
   ctx.fillStyle = "#1c2440";
-  ctx.fillRect(-9,-23,3,10); ctx.fillRect(6,-23,3,10);
-  ctx.fillStyle = "#4a5a78"; // wrist launcher
-  ctx.fillRect(-9,-14,4,3); ctx.fillRect(5,-14,4,3);
+  ctx.fillRect(-9,-23+legSwing*0.2,3,10);
+  ctx.fillStyle = "#4a5a78";
+  ctx.fillRect(-9,-14,4,3);
+
+  // front arm — thrusts forward during a punch
+  ctx.fillStyle = "#1c2440";
+  ctx.fillRect(6,-23-legSwing*0.2,3+punchExtend,5);
+  ctx.fillStyle = "#4a5a78";
+  ctx.fillRect(5+punchExtend,-15,4,3);
+  if(punching){
+    ctx.fillStyle = "rgba(255,220,80,0.85)";
+    ctx.fillRect(9+punchExtend, -20, 12, 8);
+  }
+
   // head/mask
   ctx.fillStyle = "#141b30";
   ctx.fillRect(-5,-32,10,9);
@@ -1203,12 +1409,13 @@ function drawPlayer(pl, camX){
   ctx.beginPath(); ctx.moveTo(-3,-29); ctx.lineTo(0,-27); ctx.lineTo(-3,-25); ctx.closePath(); ctx.fill();
   ctx.beginPath(); ctx.moveTo(1,-29); ctx.lineTo(4,-27); ctx.lineTo(1,-25); ctx.closePath(); ctx.fill();
 
-  if(pl.attackTimer>0){
-    ctx.fillStyle = "rgba(255,220,80,0.85)";
-    ctx.fillRect(9,-24,14,10);
-  }
   ctx.restore();
   ctx.globalAlpha = 1;
+
+  if(pl.shieldT>0){
+    ctx.strokeStyle = `rgba(90,200,255,${0.5+Math.sin(pl.animT*8)*0.25})`; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.arc(x, y-16, 20*scaleMult, 0, Math.PI*2); ctx.stroke();
+  }
 
   if(pl.rope){
     ctx.strokeStyle = "#ffd24a"; ctx.lineWidth=1.5;
@@ -1468,6 +1675,26 @@ function drawCollectiblesAndCivilians(camX, t){
     ctx.fillStyle="#ffd7b0"; ctx.fillRect(x-3,c.y-30,6,6);
   }
 }
+const BOOSTER_COLORS = { sizeup:"#ff8a3a", shield:"#5ad0ff", magnet:"#ff4ad4", speedboost:"#4affea" };
+const BOOSTER_LABELS = { sizeup:"S", shield:"◇", magnet:"M", speedboost:">" };
+function drawBoosters(camX, t){
+  for(const b of (G.boosterState||[])){
+    if(b.taken) continue;
+    const x=b.x-camX; if(x<-14||x>W+14) continue;
+    const y = b.y + Math.sin(t*3+b.x)*3;
+    const col = BOOSTER_COLORS[b.type]||"#fff";
+    ctx.save(); ctx.translate(x,y);
+    ctx.strokeStyle = col; ctx.globalAlpha = 0.5+Math.sin(t*6)*0.3;
+    ctx.beginPath(); ctx.arc(0,0,9,0,Math.PI*2); ctx.stroke();
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = col;
+    ctx.beginPath(); ctx.arc(0,0,6,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle = "#0a0614"; ctx.font = "8px monospace"; ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillText(BOOSTER_LABELS[b.type]||"?", 0, 0);
+    ctx.textAlign="left"; ctx.textBaseline="alphabetic";
+    ctx.restore();
+  }
+}
 function drawFloatTexts(camX){
   ctx.font="8px monospace"; ctx.textAlign="center";
   for(const f of floatTexts){
@@ -1490,6 +1717,7 @@ function render(dt){
   drawPlatforms(G.level.platforms, G.camX, theme);
   drawHazards(G.hazards, G.camX);
   drawCollectiblesAndCivilians(G.camX, G.time);
+  drawBoosters(G.camX, G.time);
   for(const e of G.enemyState) drawEnemy(e, G.camX, G.time);
   if(G.boss) drawBoss(G.boss, G.camX, G.time);
   drawProjectiles(G.camX);
@@ -1537,9 +1765,15 @@ function loop(now){
     if(G.boss) updateBoss(dt);
     // camera follow
     const targetCam = Math.max(0, Math.min(G.level.levelW-W, G.player.x - W*0.4));
-    G.camX += (targetCam-G.camX)*Math.min(1, dt*6);
-    document.getElementById("healthFill").style.width = Math.max(0,G.player.hp) + "%";
+    G.camX += (targetCam-G.camX)*Math.min(1, dt*8);
+    document.getElementById("healthFill").style.width = Math.max(0,(G.player.hp/G.player.maxHp*100)) + "%";
     document.getElementById("scoreVal").textContent = G.score;
+    document.getElementById("coinVal").textContent = save.coins;
+    const lashPct = Math.min(100, (G.player.lashCharge/MAX_LASH_CHARGE)*100);
+    document.getElementById("lashFill").style.width = lashPct + "%";
+    const lashLabelEl = document.getElementById("lashLabel");
+    lashLabelEl.textContent = lashPct>=100 ? "LASH READY!" : "LASH";
+    lashLabelEl.classList.toggle("ready", lashPct>=100);
     checkLevelComplete();
     render(dt);
   }
